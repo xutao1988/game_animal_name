@@ -48,7 +48,7 @@
     font-weight: 700;
     text-shadow: 2px 2px 4px rgba(0,0,0,.3);
   }
-  #btn-mute {
+  #btn-mute, #btn-voice {
     background: rgba(255,255,255,.2);
     border: none;
     border-radius: 50%;
@@ -59,7 +59,8 @@
     transition: background .2s;
     flex-shrink: 0;
   }
-  #btn-mute:hover { background: rgba(255,255,255,.35); }
+  #btn-mute:hover, #btn-voice:hover { background: rgba(255,255,255,.35); }
+  #btn-voice.off { opacity: .45; }
 
   /* --- Question area --- */
   #question-area {
@@ -293,6 +294,7 @@
     <span class="hud-item" id="hud-level">Level 1</span>
     <span class="hud-item" id="hud-score">Score: 0</span>
     <span class="hud-item" id="hud-lives">❤️❤️❤️</span>
+    <button id="btn-voice" title="Toggle Voice 语音开关">🗣️</button>
     <button id="btn-mute" title="Toggle Music">🔊</button>
   </div>
 
@@ -477,6 +479,7 @@ function buildRound(){
   $name.style.animation = 'none';
   void $name.offsetWidth;
   $name.style.animation = 'popIn .4s ease';
+  speakWord(currentAnswer.name);
 
   // assign animals to rows (shuffled order)
   const rowOrder = shuffle([0,1,2]);
@@ -649,6 +652,37 @@ function startGame(){
 
 document.getElementById('btn-start').addEventListener('click', startGame);
 document.getElementById('btn-restart').addEventListener('click', startGame);
+
+// ==================== Text-to-Speech ====================
+let voiceEnabled = true;
+const $btnVoice = document.getElementById('btn-voice');
+
+function speakWord(text){
+  if(!voiceEnabled || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'en-US';
+  utter.rate = 0.8;   // slightly slower for kids
+  utter.pitch = 1.1;
+  // try to pick an English voice
+  const voices = window.speechSynthesis.getVoices();
+  const enVoice = voices.find(v => v.lang.startsWith('en'));
+  if(enVoice) utter.voice = enVoice;
+  window.speechSynthesis.speak(utter);
+}
+
+function toggleVoice(){
+  voiceEnabled = !voiceEnabled;
+  $btnVoice.textContent = voiceEnabled ? '🗣️' : '🤐';
+  $btnVoice.classList.toggle('off', !voiceEnabled);
+}
+$btnVoice.addEventListener('click', toggleVoice);
+
+// preload voices (some browsers load them async)
+if(window.speechSynthesis) {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
 
 // prevent iOS Safari bounce / pull-to-refresh
 document.addEventListener('touchmove', (e) => { e.preventDefault(); }, { passive: false });
