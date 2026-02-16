@@ -193,6 +193,32 @@
   .overlay-screen button:hover { transform: scale(1.06); }
   .overlay-screen button:active { transform: scale(.96); }
 
+  /* --- Other games links --- */
+  .other-games {
+    margin-top: 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+  .other-games-title {
+    font-size: 14px;
+    color: rgba(255,255,255,.5);
+  }
+  .game-link {
+    display: inline-block;
+    padding: 10px 28px;
+    background: rgba(255,255,255,.15);
+    border-radius: 30px;
+    color: #fff;
+    text-decoration: none;
+    font-size: 18px;
+    font-weight: 600;
+    transition: background .2s, transform .15s;
+  }
+  .game-link:hover { background: rgba(255,255,255,.28); transform: scale(1.05); }
+  .game-link:active { transform: scale(.96); }
+
   /* --- Timer bar --- */
   #timer-bar-wrap {
     width: 90%;
@@ -296,6 +322,10 @@
   <h1>Animal Name Game</h1>
   <p>看英文名，点击对应的动物！<br>Read the name, click the matching animal!</p>
   <button id="btn-start">Start Game 开始</button>
+  <div class="other-games">
+    <span class="other-games-title">-- 其他游戏 --</span>
+    <a class="game-link" href="https://xutao1988.github.io/game_qiaodishu/">🫓 敲大饼大作战</a>
+  </div>
 </div>
 
 <!-- Game Over screen -->
@@ -304,6 +334,10 @@
   <h1 id="go-title">Game Over</h1>
   <p id="go-detail"></p>
   <button id="btn-restart">Play Again 再来一次</button>
+  <div class="other-games">
+    <span class="other-games-title">-- 其他游戏 --</span>
+    <a class="game-link" href="https://xutao1988.github.io/game_qiaodishu/">🫓 敲大饼大作战</a>
+  </div>
 </div>
 
 <script>
