@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Animal Game">
+<title>Animal Name Game - 动物英文名益智游戏</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    touch-action: manipulation;
+    overscroll-behavior: none;
+    -webkit-touch-callout: none;
+  }
+
+  body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    overflow: hidden;
+    user-select: none;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+
+  #game-container {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* --- Top HUD --- */
+  #hud {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 90%;
+    max-width: 700px;
+    padding: 12px 0 4px;
+  }
+  .hud-item {
+    color: #fff;
+    font-size: 20px;
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0,0,0,.3);
+  }
+  #btn-mute {
+    background: rgba(255,255,255,.2);
+    border: none;
+    border-radius: 50%;
+    width: 40px; height: 40px;
+    font-size: 22px;
+    cursor: pointer;
+    color: #fff;
+    transition: background .2s;
+    flex-shrink: 0;
+  }
+  #btn-mute:hover { background: rgba(255,255,255,.35); }
+
+  /* --- Question area --- */
+  #question-area {
+    margin-top: 10px;
+    text-align: center;
+  }
+  #question-label {
+    color: #ffffffcc;
+    font-size: 22px;
+  }
+  #animal-name {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 10px 48px;
+    background: #fff;
+    border-radius: 60px;
+    font-size: 52px;
+    font-weight: 900;
+    color: #4a3aad;
+    letter-spacing: 4px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.18);
+    animation: popIn .4s ease;
+  }
+
+  /* --- Rows --- */
+  #rows-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 0;
+  }
+
+  .animal-row {
+    position: relative;
+    width: 100%;
+    height: 160px;
+    overflow: hidden;
+  }
+
+  .animal-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 150px;
+    height: 150px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255,255,255,.92);
+    box-shadow: 0 6px 20px rgba(0,0,0,.15);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 85px;
+    transition: transform .12s, box-shadow .12s;
+  }
+  /* hover only on devices with a pointer (not touch) */
+  @media (hover: hover) {
+    .animal-btn:hover {
+      transform: translateY(-50%) scale(1.12);
+      box-shadow: 0 8px 28px rgba(0,0,0,.25);
+    }
+  }
+  .animal-btn:active {
+    transform: translateY(-50%) scale(.95);
+  }
+
+  /* --- Feedback overlay --- */
+  #feedback {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 100;
+  }
+  #feedback .msg {
+    font-size: 80px;
+    opacity: 0;
+    transform: scale(.5);
+  }
+  #feedback .msg.show {
+    animation: feedbackPop .7s ease forwards;
+  }
+
+  /* --- Start / Game-over screens --- */
+  .overlay-screen {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(30, 20, 60, .82);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    color: #fff;
+    text-align: center;
+    gap: 18px;
+  }
+  .overlay-screen.hidden { display: none; }
+
+  .overlay-screen h1 {
+    font-size: 48px;
+    text-shadow: 2px 2px 8px rgba(0,0,0,.4);
+  }
+  .overlay-screen p {
+    font-size: 22px;
+    opacity: .85;
+  }
+  .overlay-screen .big-emoji {
+    font-size: 80px;
+    animation: bounce 1s infinite alternate;
+  }
+  .overlay-screen button {
+    margin-top: 10px;
+    padding: 16px 56px;
+    font-size: 26px;
+    font-weight: 700;
+    border: none;
+    border-radius: 60px;
+    background: linear-gradient(135deg, #f5af19, #f12711);
+    color: #fff;
+    cursor: pointer;
+    box-shadow: 0 6px 24px rgba(241,39,17,.4);
+    transition: transform .15s;
+  }
+  .overlay-screen button:hover { transform: scale(1.06); }
+  .overlay-screen button:active { transform: scale(.96); }
+
+  /* --- Timer bar --- */
+  #timer-bar-wrap {
+    width: 90%;
+    max-width: 700px;
+    height: 10px;
+    background: rgba(255,255,255,.25);
+    border-radius: 5px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  #timer-bar {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #43e97b, #38f9d7);
+    border-radius: 5px;
+    transition: width .15s linear, background .3s;
+  }
+  #timer-bar.warning { background: linear-gradient(90deg, #f7971e, #ffd200); }
+  #timer-bar.danger  { background: linear-gradient(90deg, #f5515f, #9f041b); }
+
+  /* --- Stars particles --- */
+  .star-particle {
+    position: fixed;
+    pointer-events: none;
+    font-size: 28px;
+    z-index: 150;
+    animation: starFly 1s ease forwards;
+  }
+
+  /* --- Animations --- */
+  @keyframes popIn {
+    0%   { transform: scale(.3); opacity: 0; }
+    100% { transform: scale(1);  opacity: 1; }
+  }
+  @keyframes feedbackPop {
+    0%   { opacity: 0; transform: scale(.5); }
+    40%  { opacity: 1; transform: scale(1.2); }
+    100% { opacity: 0; transform: scale(1.6) translateY(-40px); }
+  }
+  @keyframes bounce {
+    0%   { transform: translateY(0); }
+    100% { transform: translateY(-16px); }
+  }
+  @keyframes starFly {
+    0%   { opacity: 1; transform: translate(0,0) scale(1) rotate(0deg); }
+    100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.3) rotate(360deg); }
+  }
+</style>
+</head>
+<body>
+<div id="game-container">
+
+  <!-- HUD -->
+  <div id="hud">
+    <span class="hud-item" id="hud-level">Level 1</span>
+    <span class="hud-item" id="hud-score">Score: 0</span>
+    <span class="hud-item" id="hud-lives">❤️❤️❤️</span>
+    <button id="btn-mute" title="Toggle Music">🔊</button>
+  </div>
+
+  <!-- Timer -->
+  <div id="timer-bar-wrap"><div id="timer-bar"></div></div>
+
+  <!-- Question -->
+  <div id="question-area">
+    <div id="question-label">Find the animal 找到这个动物 👇</div>
+    <div id="animal-name"></div>
+  </div>
+
+  <!-- Three rows -->
+  <div id="rows-wrapper">
+    <div class="animal-row" id="row-0"></div>
+    <div class="animal-row" id="row-1"></div>
+    <div class="animal-row" id="row-2"></div>
+  </div>
+
+  <!-- Feedback -->
+  <div id="feedback"><div class="msg" id="feedback-msg"></div></div>
+</div>
+
+<!-- Start screen -->
+<div class="overlay-screen" id="start-screen">
+  <div class="big-emoji">🦁🐶🐱</div>
+  <h1>Animal Name Game</h1>
+  <p>看英文名，点击对应的动物！<br>Read the name, click the matching animal!</p>
+  <button id="btn-start">Start Game 开始</button>
+</div>
+
+<!-- Game Over screen -->
+<div class="overlay-screen hidden" id="gameover-screen">
+  <div class="big-emoji" id="go-emoji">🏆</div>
+  <h1 id="go-title">Game Over</h1>
+  <p id="go-detail"></p>
+  <button id="btn-restart">Play Again 再来一次</button>
+</div>
+
+<script>
+// ==================== Animal Data ====================
+const ANIMALS = [
+  { name: 'Dog',        emoji: '🐶' },
+  { name: 'Cat',        emoji: '🐱' },
+  { name: 'Chicken',    emoji: '🐔' },
+  { name: 'Duck',       emoji: '🦆' },
+  { name: 'Rabbit',     emoji: '🐰' },
+  { name: 'Pig',        emoji: '🐷' },
+  { name: 'Cow',        emoji: '🐮' },
+  { name: 'Horse',      emoji: '🐴' },
+  { name: 'Sheep',      emoji: '🐑' },
+  { name: 'Mouse',      emoji: '🐭' },
+  { name: 'Monkey',     emoji: '🐵' },
+  { name: 'Tiger',      emoji: '🐯' },
+  { name: 'Lion',       emoji: '🦁' },
+  { name: 'Bear',       emoji: '🐻' },
+  { name: 'Panda',      emoji: '🐼' },
+  { name: 'Frog',       emoji: '🐸' },
+  { name: 'Fox',        emoji: '🦊' },
+  { name: 'Elephant',   emoji: '🐘' },
+  { name: 'Whale',      emoji: '🐳' },
+  { name: 'Dolphin',    emoji: '🐬' },
+  { name: 'Penguin',    emoji: '🐧' },
+  { name: 'Owl',        emoji: '🦉' },
+  { name: 'Snake',      emoji: '🐍' },
+  { name: 'Turtle',     emoji: '🐢' },
+  { name: 'Butterfly',  emoji: '🦋' },
+  { name: 'Bee',        emoji: '🐝' },
+  { name: 'Octopus',    emoji: '🐙' },
+  { name: 'Crab',       emoji: '🦀' },
+  { name: 'Snail',      emoji: '🐌' },
+  { name: 'Koala',      emoji: '🐨' },
+  { name: 'Giraffe',    emoji: '🦒' },
+  { name: 'Zebra',      emoji: '🦓' },
+  { name: 'Hedgehog',   emoji: '🦔' },
+  { name: 'Crocodile',  emoji: '🐊' },
+  { name: 'Rooster',    emoji: '🐓' },
+  { name: 'Eagle',      emoji: '🦅' },
+  { name: 'Bat',        emoji: '🦇' },
+  { name: 'Deer',       emoji: '🦌' },
+  { name: 'Gorilla',    emoji: '🦍' },
+  { name: 'Unicorn',    emoji: '🦄' },
+];
+
+// ==================== Game State ====================
+let level = 0;
+let score = 0;
+let lives = 3;
+let timerMax = 8000;      // ms for first levels
+let timerLeft = 0;
+let timerInterval = null;
+let animFrameId = null;
+let currentAnswer = null;  // animal object
+let rowAnimals = [];       // [{animal, row, x, speed, dir, el}]
+let playing = false;
+let lastUsedIndices = [];  // avoid immediate repeats
+
+// DOM
+const $name      = document.getElementById('animal-name');
+const $rows      = [0,1,2].map(i => document.getElementById('row-'+i));
+const $hud       = { level: document.getElementById('hud-level'),
+                     score: document.getElementById('hud-score'),
+                     lives: document.getElementById('hud-lives') };
+const $timerBar  = document.getElementById('timer-bar');
+const $fbMsg     = document.getElementById('feedback-msg');
+const $startScr  = document.getElementById('start-screen');
+const $goScr     = document.getElementById('gameover-screen');
+
+// ==================== Helpers ====================
+function rand(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
+function shuffle(arr){ for(let i=arr.length-1;i>0;i--){const j=rand(0,i);[arr[i],arr[j]]=[arr[j],arr[i]];} return arr;}
+
+function pick3Animals(){
+  // pick 3 unique animals, avoiding recent answer
+  const pool = ANIMALS.filter((_,i) => !lastUsedIndices.includes(i));
+  shuffle(pool);
+  const chosen = pool.slice(0,3);
+  lastUsedIndices = chosen.map(a => ANIMALS.indexOf(a));
+  return chosen;
+}
+
+function getTimerForLevel(lv){
+  // starts 8s, decreases to min 3.5s
+  return Math.max(3500, 8000 - lv * 250);
+}
+
+function getSpeedRange(lv){
+  const base = 1.0 + lv * 0.15;
+  return [Math.max(0.8, base - 0.4), base + 0.6];
+}
+
+// ==================== HUD ====================
+function updateHUD(){
+  $hud.level.textContent = 'Level ' + (level + 1);
+  $hud.score.textContent = 'Score: ' + score;
+  $hud.lives.textContent = '❤️'.repeat(lives) + '🖤'.repeat(3-lives);
+}
+
+// ==================== Timer ====================
+function startTimer(){
+  timerMax = getTimerForLevel(level);
+  timerLeft = timerMax;
+  $timerBar.style.width = '100%';
+  $timerBar.classList.remove('warning','danger');
+
+  clearInterval(timerInterval);
+  const step = 50;
+  timerInterval = setInterval(()=>{
+    if(!playing) return;
+    timerLeft -= step;
+    const pct = Math.max(0, timerLeft / timerMax * 100);
+    $timerBar.style.width = pct + '%';
+    if(pct < 25) $timerBar.classList.add('danger');
+    else if(pct < 50) $timerBar.classList.add('warning');
+
+    if(timerLeft <= 0){
+      clearInterval(timerInterval);
+      onWrong();
+    }
+  }, step);
+}
+
+// ==================== Build Round ====================
+function buildRound(){
+  // clear old
+  $rows.forEach(r => r.innerHTML = '');
+  rowAnimals = [];
+
+  const three = pick3Animals();
+  currentAnswer = three[rand(0,2)];
+
+  // set question
+  $name.textContent = currentAnswer.name;
+  $name.style.animation = 'none';
+  void $name.offsetWidth;
+  $name.style.animation = 'popIn .4s ease';
+
+  // assign animals to rows (shuffled order)
+  const rowOrder = shuffle([0,1,2]);
+
+  const [sMin, sMax] = getSpeedRange(level);
+  const vw = window.innerWidth;
+
+  // all animals move within the center 1/3 of the screen
+  const btnW = 150;
+  const minX = vw / 3;
+  const maxX = vw / 3 * 2 - btnW;
+
+  three.forEach((animal, i) => {
+    const row = rowOrder[i];
+    const btn = document.createElement('button');
+    btn.className = 'animal-btn';
+    btn.textContent = animal.emoji;
+    btn.setAttribute('aria-label', animal.name);
+    $rows[row].appendChild(btn);
+
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    const speed = sMin + Math.random() * (sMax - sMin);
+    const startX = rand(minX, maxX);
+
+    const entry = { animal, row, x: startX, speed, dir, el: btn, minX, maxX };
+    rowAnimals.push(entry);
+    btn.style.left = startX + 'px';
+
+    // use touchstart on touch devices for instant response, click as fallback
+    const tapEvent = 'ontouchstart' in window ? 'touchstart' : 'click';
+    btn.addEventListener(tapEvent, (e) => { e.preventDefault(); onClickAnimal(animal, btn); });
+  });
+
+  updateHUD();
+  startTimer();
+}
+
+// ==================== Animation Loop ====================
+function animLoop(){
+  rowAnimals.forEach(r => {
+    r.x += r.speed * r.dir;
+    // bounce within assigned 1/3 zone
+    if(r.x <= r.minX){ r.x = r.minX; r.dir = 1; }
+    if(r.x >= r.maxX){ r.x = r.maxX; r.dir = -1; }
+    r.el.style.left = r.x + 'px';
+  });
+  if(playing) animFrameId = requestAnimationFrame(animLoop);
+}
+
+// ==================== Click Handling ====================
+function onClickAnimal(animal, btnEl){
+  if(!playing) return;
+
+  if(animal.name === currentAnswer.name){
+    onCorrect(btnEl);
+  } else {
+    onWrong(btnEl);
+  }
+}
+
+function onCorrect(btnEl){
+  playing = false;
+  clearInterval(timerInterval);
+  cancelAnimationFrame(animFrameId);
+
+  // bonus for remaining time
+  const timeBonus = Math.round(timerLeft / timerMax * 50);
+  score += 100 + timeBonus;
+  level++;
+
+  showFeedback('✅');
+  spawnStars(btnEl);
+
+  setTimeout(()=>{
+    playing = true;
+    buildRound();
+    animFrameId = requestAnimationFrame(animLoop);
+  }, 800);
+}
+
+function onWrong(btnEl){
+  playing = false;
+  clearInterval(timerInterval);
+  cancelAnimationFrame(animFrameId);
+
+  lives--;
+  updateHUD();
+  showFeedback('❌');
+
+  if(btnEl){
+    btnEl.style.background = '#ff6b6b';
+    btnEl.style.transform = 'translateY(-50%) scale(.9)';
+  }
+
+  // highlight correct
+  rowAnimals.forEach(r => {
+    if(r.animal.name === currentAnswer.name){
+      r.el.style.background = '#51cf66';
+      r.el.style.boxShadow = '0 0 24px #51cf66';
+      r.el.style.transform = 'translateY(-50%) scale(1.15)';
+    }
+  });
+
+  if(lives <= 0){
+    setTimeout(gameOver, 1200);
+  } else {
+    setTimeout(()=>{
+      playing = true;
+      buildRound();
+      animFrameId = requestAnimationFrame(animLoop);
+    }, 1200);
+  }
+}
+
+// ==================== Feedback ====================
+function showFeedback(text){
+  $fbMsg.textContent = text;
+  $fbMsg.classList.remove('show');
+  void $fbMsg.offsetWidth;
+  $fbMsg.classList.add('show');
+}
+
+function spawnStars(anchor){
+  const rect = anchor.getBoundingClientRect();
+  const cx = rect.left + rect.width/2;
+  const cy = rect.top + rect.height/2;
+  const symbols = ['⭐','🌟','✨','💫'];
+  for(let i=0;i<8;i++){
+    const s = document.createElement('div');
+    s.className = 'star-particle';
+    s.textContent = symbols[i%symbols.length];
+    s.style.left = cx+'px';
+    s.style.top = cy+'px';
+    const angle = Math.PI*2/8*i;
+    s.style.setProperty('--dx', Math.cos(angle)*120+'px');
+    s.style.setProperty('--dy', Math.sin(angle)*120+'px');
+    document.body.appendChild(s);
+    setTimeout(()=>s.remove(), 1000);
+  }
+}
+
+// ==================== Game Over ====================
+function gameOver(){
+  playing = false;
+  cancelAnimationFrame(animFrameId);
+  clearInterval(timerInterval);
+
+  document.getElementById('go-emoji').textContent = score >= 500 ? '🏆' : '🎮';
+  document.getElementById('go-title').textContent = score >= 500 ? 'Great Job! 太棒了!' : 'Game Over 游戏结束';
+  document.getElementById('go-detail').textContent =
+    `You reached Level ${level+1} with a score of ${score}!\n你到达了第 ${level+1} 关，得分 ${score}！`;
+
+  $goScr.classList.remove('hidden');
+}
+
+// ==================== Start / Restart ====================
+function startGame(){
+  level = 0;
+  score = 0;
+  lives = 3;
+  lastUsedIndices = [];
+  playing = true;
+  $startScr.classList.add('hidden');
+  $goScr.classList.add('hidden');
+  updateHUD();
+  buildRound();
+  animFrameId = requestAnimationFrame(animLoop);
+}
+
+document.getElementById('btn-start').addEventListener('click', startGame);
+document.getElementById('btn-restart').addEventListener('click', startGame);
+
+// prevent iOS Safari bounce / pull-to-refresh
+document.addEventListener('touchmove', (e) => { e.preventDefault(); }, { passive: false });
+
+// handle resize — recalculate center zone bounds
+window.addEventListener('resize', ()=>{
+  if(!playing) return;
+  const vw = window.innerWidth;
+  const btnW = 150;
+  const minX = vw / 3;
+  const maxX = vw / 3 * 2 - btnW;
+  rowAnimals.forEach(r => {
+    r.minX = minX;
+    r.maxX = maxX;
+    if(r.x < r.minX) r.x = r.minX;
+    if(r.x > r.maxX) r.x = r.maxX;
+  });
+});
+
+// ==================== Background Music (Web Audio API) ====================
+let audioCtx = null;
+let musicGain = null;
+let musicMuted = false;
+let musicStarted = false;
+let melodyTimer = null;
+
+// A warm, cheerful pentatonic melody in C major
+const BPM = 120;
+const NOTE_DUR = 60 / BPM;  // seconds per beat
+
+// note frequencies
+const NOTE_FREQ = {
+  C4:261.63, D4:293.66, E4:329.63, G4:392.00, A4:440.00,
+  C5:523.25, D5:587.33, E5:659.25, G5:783.99, A5:880.00,
+  C3:130.81, E3:164.81, G3:196.00, A3:220.00, D3:146.83,
+};
+
+// melody pattern (note name, duration in beats)
+const MELODY = [
+  ['C5',1],['E5',1],['G5',1],['E5',1],
+  ['D5',1],['C5',1],['A4',2],
+  ['G4',1],['A4',1],['C5',1],['A4',1],
+  ['G4',1],['E4',1],['D4',2],
+  ['E4',1],['G4',1],['A4',1],['C5',1],
+  ['D5',1.5],['C5',0.5],['A4',2],
+  ['G4',1],['E4',1],['D4',1],['E4',1],
+  ['C4',2],[null,2],
+];
+
+// bass pattern (chord root, duration in beats)
+const BASS = [
+  ['C3',4],['A3',4],
+  ['G3',4],['D3',4],
+  ['C3',4],['A3',4],
+  ['G3',4],['C3',4],
+];
+
+function initAudio(){
+  if(audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  musicGain = audioCtx.createGain();
+  musicGain.gain.value = 0.25;
+  musicGain.connect(audioCtx.destination);
+}
+
+function playNote(freq, startTime, duration, type, gainVal){
+  const osc = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  osc.type = type || 'triangle';
+  osc.frequency.value = freq;
+  g.gain.setValueAtTime(0, startTime);
+  g.gain.linearRampToValueAtTime(gainVal || 0.18, startTime + 0.05);
+  g.gain.setValueAtTime(gainVal || 0.18, startTime + duration * 0.7);
+  g.gain.linearRampToValueAtTime(0, startTime + duration);
+  osc.connect(g);
+  g.connect(musicGain);
+  osc.start(startTime);
+  osc.stop(startTime + duration + 0.05);
+}
+
+function scheduleMelodyCycle(){
+  if(!audioCtx || musicMuted) return;
+  const now = audioCtx.currentTime + 0.1;
+
+  // melody
+  let t = now;
+  MELODY.forEach(([note, beats]) => {
+    const dur = beats * NOTE_DUR;
+    if(note) playNote(NOTE_FREQ[note], t, dur * 0.9, 'triangle', 0.16);
+    t += dur;
+  });
+
+  // bass
+  let tb = now;
+  BASS.forEach(([note, beats]) => {
+    const dur = beats * NOTE_DUR;
+    if(note) playNote(NOTE_FREQ[note], tb, dur * 0.85, 'sine', 0.10);
+    tb += dur;
+  });
+
+  // total cycle duration
+  const totalBeats = MELODY.reduce((s,[,b])=>s+b, 0);
+  const cycleDur = totalBeats * NOTE_DUR * 1000;
+
+  melodyTimer = setTimeout(scheduleMelodyCycle, cycleDur - 100);
+}
+
+function startMusic(){
+  if(musicStarted) return;
+  initAudio();
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  musicStarted = true;
+  musicMuted = false;
+  scheduleMelodyCycle();
+}
+
+function stopMusic(){
+  musicStarted = false;
+  clearTimeout(melodyTimer);
+}
+
+function toggleMute(){
+  if(!audioCtx) { startMusic(); return; }
+  musicMuted = !musicMuted;
+  document.getElementById('btn-mute').textContent = musicMuted ? '🔇' : '🔊';
+  if(musicMuted){
+    musicGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.3);
+    clearTimeout(melodyTimer);
+  } else {
+    musicGain.gain.linearRampToValueAtTime(0.25, audioCtx.currentTime + 0.3);
+    if(musicStarted) scheduleMelodyCycle();
+  }
+}
+
+document.getElementById('btn-mute').addEventListener('click', toggleMute);
+
+// patch startGame to also start music
+const _origStartGame = startGame;
+startGame = function(){
+  _origStartGame();
+  startMusic();
+};
+</script>
+</body>
+</html>
